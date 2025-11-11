@@ -9,13 +9,19 @@ class AtlasConfig:
     def __init__(self, callbacks):
         self.callbacks = callbacks
         self.config = {
-            "backend": "openai",  # openai or local
+            "backend": "openai",  # openai, gemini, mistral, groq, or local
             "api_key": "",
+            "gemini_api_key": "",
+            "mistral_api_key": "",
+            "groq_api_key": "",
             "local_url": "http://localhost:1234/v1/chat/completions",
             "local_api_key": "",
             "local_custom_header": "",  # Custom header name for local LLM
             "local_header_format": "Bearer",  # Header format: Bearer, Basic, or None
             "model": "gpt-3.5-turbo",
+            "gemini_model": "gemini-pro",
+            "mistral_model": "mistral-small-latest",
+            "groq_model": "mixtral-8x7b-32768",
             "temperature": 0.3,
             "max_tokens": 3000,
             "timeout": 60

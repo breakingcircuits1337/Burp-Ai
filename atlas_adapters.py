@@ -112,6 +112,220 @@ class OpenAIAdapter(BaseAdapter):
             raise Exception("OpenAI Request Failed: " + str(e))
 
 
+class GeminiAdapter(BaseAdapter):
+    """Google Gemini API adapter."""
+
+    def __init__(self, api_key, model="gemini-pro", temperature=0.3, max_tokens=3000, timeout=60):
+        super(GeminiAdapter, self).__init__(timeout)
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent".format(self.model)
+
+    def send_message(self, message):
+        if not self._callbacks:
+            raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")
+
+        from atlas_prompts import AtlasPrompts
+
+        # Gemini uses a different format
+        contents = [{
+            "parts": [{
+                "text": AtlasPrompts.SYSTEM_PROMPT + "\n\n" + message
+            }]
+        }]
+
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": self.temperature,
+                "maxOutputTokens": self.max_tokens,
+            }
+        }
+
+        try:
+            request_body = json.dumps(payload)
+            endpoint_path = self.endpoint.split("googleapis.com")[1]
+            host = "generativelanguage.googleapis.com"
+            
+            headers = [
+                "POST {} HTTP/1.1".format(endpoint_path + "?key=" + self.api_key),
+                "Host: " + host,
+                "Content-Type: application/json",
+                "User-Agent: Atlas-AI-Burp-Extension/1.0",
+                "Accept: application/json",
+                "Content-Length: " + str(len(request_body))
+            ]
+
+            request = "\r\n".join(headers) + "\r\n\r\n" + request_body
+            request_bytes = self._helpers.stringToBytes(request)
+
+            http_service = self._helpers.buildHttpService(host, 443, True)
+            http_response = self._callbacks.makeHttpRequest(http_service, request_bytes)
+
+            response_bytes = http_response.getResponse()
+            if not response_bytes:
+                raise Exception("No response received from Gemini")
+
+            response_info = self._helpers.analyzeResponse(response_bytes)
+            response_body_offset = response_info.getBodyOffset()
+            response_body = self._helpers.bytesToString(response_bytes[response_body_offset:])
+            status_code = response_info.getStatusCode()
+
+            if status_code == 200:
+                response_json = json.loads(response_body)
+                if "candidates" in response_json and response_json["candidates"]:
+                    part = response_json["candidates"][0]["content"]["parts"][0]
+                    return part["text"].strip()
+                return "No response content from Gemini"
+            else:
+                raise Exception("Gemini HTTP Error {}: {}".format(status_code, response_body[:200]))
+
+        except Exception as e:
+            raise Exception("Gemini Request Failed: " + str(e))
+
+
+class MistralAdapter(BaseAdapter):
+    """Mistral API adapter."""
+
+    def __init__(self, api_key, model="mistral-small-latest", temperature=0.3, max_tokens=3000, timeout=60):
+        super(MistralAdapter, self).__init__(timeout)
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.endpoint = "https://api.mistral.ai/v1/chat/completions"
+
+    def send_message(self, message):
+        if not self._callbacks:
+            raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")
+
+        from atlas_prompts import AtlasPrompts
+        
+        messages = [
+            {"role": "system", "content": AtlasPrompts.SYSTEM_PROMPT},
+            {"role": "user", "content": message}
+        ]
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens
+        }
+
+        try:
+            request_body = json.dumps(payload)
+            host = "api.mistral.ai"
+            
+            headers = [
+                "POST /v1/chat/completions HTTP/1.1",
+                "Host: " + host,
+                "Content-Type: application/json",
+                "Authorization: Bearer " + self.api_key,
+                "User-Agent: Atlas-AI-Burp-Extension/1.0",
+                "Accept: application/json",
+                "Content-Length: " + str(len(request_body))
+            ]
+
+            request = "\r\n".join(headers) + "\r\n\r\n" + request_body
+            request_bytes = self._helpers.stringToBytes(request)
+
+            http_service = self._helpers.buildHttpService(host, 443, True)
+            http_response = self._callbacks.makeHttpRequest(http_service, request_bytes)
+
+            response_bytes = http_response.getResponse()
+            if not response_bytes:
+                raise Exception("No response received from Mistral")
+
+            response_info = self._helpers.analyzeResponse(response_bytes)
+            response_body_offset = response_info.getBodyOffset()
+            response_body = self._helpers.bytesToString(response_bytes[response_body_offset:])
+            status_code = response_info.getStatusCode()
+
+            if status_code == 200:
+                response_json = json.loads(response_body)
+                if "choices" in response_json and response_json["choices"]:
+                    return response_json["choices"][0]["message"]["content"].strip()
+                return "No response content from Mistral"
+            else:
+                raise Exception("Mistral HTTP Error {}: {}".format(status_code, response_body[:200]))
+
+        except Exception as e:
+            raise Exception("Mistral Request Failed: " + str(e))
+
+
+class GroqAdapter(BaseAdapter):
+    """Groq API adapter."""
+
+    def __init__(self, api_key, model="mixtral-8x7b-32768", temperature=0.3, max_tokens=3000, timeout=60):
+        super(GroqAdapter, self).__init__(timeout)
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.endpoint = "https://api.groq.com/openai/v1/chat/completions"
+
+    def send_message(self, message):
+        if not self._callbacks:
+            raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")
+
+        from atlas_prompts import AtlasPrompts
+
+        messages = [
+            {"role": "system", "content": AtlasPrompts.SYSTEM_PROMPT},
+            {"role": "user", "content": message}
+        ]
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens
+        }
+
+        try:
+            request_body = json.dumps(payload)
+            host = "api.groq.com"
+
+            headers = [
+                "POST /openai/v1/chat/completions HTTP/1.1",
+                "Host: " + host,
+                "Content-Type: application/json",
+                "Authorization: Bearer " + self.api_key,
+                "User-Agent: Atlas-AI-Burp-Extension/1.0",
+                "Accept: application/json",
+                "Content-Length: " + str(len(request_body))
+            ]
+
+            request = "\r\n".join(headers) + "\r\n\r\n" + request_body
+            request_bytes = self._helpers.stringToBytes(request)
+            
+            http_service = self._helpers.buildHttpService(host, 443, True)
+            http_response = self._callbacks.makeHttpRequest(http_service, request_bytes)
+            
+            response_bytes = http_response.getResponse()
+            if not response_bytes:
+                raise Exception("No response received from Groq")
+
+            response_info = self._helpers.analyzeResponse(response_bytes)
+            response_body_offset = response_info.getBodyOffset()
+            response_body = self._helpers.bytesToString(response_bytes[response_body_offset:])
+            status_code = response_info.getStatusCode()
+
+            if status_code == 200:
+                response_json = json.loads(response_body)
+                if "choices" in response_json and response_json["choices"]:
+                    return response_json["choices"][0]["message"]["content"].strip()
+                return "No response content from Groq"
+            else:
+                raise Exception("Groq HTTP Error {}: {}".format(status_code, response_body[:200]))
+
+        except Exception as e:
+            raise Exception("Groq Request Failed: " + str(e))
+
+
 class LocalLLMAdapter(BaseAdapter):
     """Local LLM API adapter with privacy-focused features.
     
