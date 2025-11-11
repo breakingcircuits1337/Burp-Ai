@@ -1,6 +1,6 @@
 # Atlas AI Pro - Advanced Security Analysis for Burp Suite
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/your-username/atlas-ai-pro)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/your-username/atlas-ai-pro)
 [![Burp Suite](https://img.shields.io/badge/Burp%20Suite-Professional%202025.x-orange.svg)](https://portswigger.net/burp)
 [![Python](https://img.shields.io/badge/python-Jython-yellow.svg)](https://www.jython.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -12,6 +12,12 @@ Atlas AI Pro is a powerful Burp Suite Professional extension that integrates adv
 Atlas AI Pro prioritizes your data privacy by supporting completely local AI model deployment. Keep your sensitive security data on your own infrastructure while still leveraging cutting-edge AI analysis capabilities.
 
 ## 🚀 Features
+
+### 🤖 Automated & Interactive Reconnaissance
+- **Dedicated Recon Tab** - A new top-level tab for running and managing reconnaissance scans.
+- **Run Recon Scans** - Execute `nmap` for port scanning and `whatweb` for technology fingerprinting directly from Burp Suite.
+- **AI-Powered Summarization** - Get a concise summary of reconnaissance results, including potential attack vectors and recommended next steps.
+- **Streamlined Workflow** - Seamlessly integrate reconnaissance into your testing workflow without leaving the Burp Suite environment.
 
 ### 🔐 Privacy & Security First
 - **Complete Local Deployment** - Run powerful AI models entirely on your own infrastructure
@@ -41,7 +47,11 @@ Atlas AI Pro prioritizes your data privacy by supporting completely local AI mod
 
 ### Main Extension Interface
 ![Main Interface](images/main-interface.png)
-*The main Atlas AI Pro interface showing the three primary tabs: Atlas AI Config, Atlas AI Analysis, and Scanner Findings AI*
+*The main Atlas AI Pro interface showing the primary tabs: Atlas AI Config, Atlas AI Analysis, Recon, and Scanner Findings AI*
+
+### Reconnaissance Tab
+![Recon Tab](images/recon-tab.png)
+*The dedicated Recon tab for running automated scans and getting AI-powered summaries.*
 
 ### Scanner Findings AI Tab
 ![Scanner Findings Tab](images/scanner-findings-tab.png)
@@ -60,6 +70,7 @@ Atlas AI Pro prioritizes your data privacy by supporting completely local AI mod
 ### Prerequisites
 - Burp Suite Professional 2025.x
 - Python/Jython support in Burp Suite
+- `nmap` and `whatweb` installed and available in your system's PATH.
 - API access (OpenAI, Gemini, Mistral, Groq API key or local LLM setup)
 
 ### Quick Setup
@@ -88,6 +99,13 @@ Atlas AI Pro prioritizes your data privacy by supporting completely local AI mod
 
 
 ## 🎯 Usage
+
+### Automated Reconnaissance
+1. Go to the **Recon** tab in the main Atlas AI interface.
+2. Enter a target domain or IP address in the input field.
+3. Click **Start Recon** to begin the scan.
+4. The output from `nmap` and `whatweb` will be displayed in real-time.
+5. Once the scan is complete, click **Get AI Summary** to receive a concise analysis of the findings.
 
 ### Basic Analysis
 

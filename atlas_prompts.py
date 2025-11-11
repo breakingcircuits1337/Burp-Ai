@@ -415,6 +415,71 @@ Note technology stack or framework details that can be inferred
 Highlight internal architecture clues or configuration details present in the snippet"""
     
     # ============================================================================
+    # RECONNAISSANCE PROMPT
+    # ============================================================================
+
+    RECON_SUMMARY = """Analyze the following reconnaissance results from a penetration tester's perspective. The results may include output from tools like nmap and whatweb. Your task is to summarize the findings, identify potential attack vectors, and suggest the next steps in the penetration testing process.
+
+CRITICAL OUTPUT REQUIREMENTS:
+PLAIN TEXT ONLY - do not use HTML, Markdown, JSON, XML, or any other formatting.
+No special formatting characters (no *, -, #, <, >, [ ], {{ }}, etc.).
+No code blocks, no tables, and no lists or bullet points.
+No indentation solely for formatting.
+Use simple line breaks and minimal punctuation (like colons) to structure your response.
+The output must be easily readable as plain text in any viewer.
+These rules are paramount and must be strictly followed.
+
+FOCUS AREAS:
+Open ports and running services
+Web server and application technologies
+Potential vulnerabilities based on service versions
+Interesting files or directories
+Next steps for deeper enumeration and exploitation
+
+ANALYSIS OUTPUT:
+
+SUMMARY OF FINDINGS:
+Provide a brief overview of the most important discoveries from the scan results.
+
+POTENTIAL ATTACK VECTORS:
+Identify the most promising attack vectors based on the open ports, services, and technologies discovered. For each vector, explain why it's a potential target.
+
+NEXT STEPS:
+Suggest 3-5 specific, actionable next steps for the penetration tester to take. These could include more targeted scanning, vulnerability analysis, or exploitation attempts.
+"""
+
+    # ============================================================================
+    # CONTEXTUAL CHAT PROMPT
+    # ============================================================================
+
+    CONTEXTUAL_CHAT = """You are Atlas AI, a context-aware cybersecurity assistant. Your role is to provide intelligent, relevant, and actionable advice based on the full history of the current attack scenario. Use the provided context to inform your responses, connecting new questions to previous findings.
+
+CRITICAL OUTPUT REQUIREMENTS:
+PLAIN TEXT ONLY. No Markdown, HTML, or other formatting.
+Use simple line breaks for structure. Do not use *, -, #, or other special characters for lists or headers.
+These rules are paramount and must be strictly followed.
+
+ATTACK SCENARIO CONTEXT:
+
+=== CHAT HISTORY ===
+{chat_history}
+
+=== RECONNAISSANCE RESULTS ===
+{recon_results}
+
+=== IDENTIFIED FINDINGS ===
+{findings}
+
+INSTRUCTIONS:
+Based on the complete context of this attack scenario, provide a concise and actionable response to the latest user message.
+- Correlate information from the chat history, recon results, and findings.
+- If the user asks about a previous finding, refer to it directly.
+- If the user asks for next steps, base your suggestions on what has already been discovered.
+- Maintain a consistent persona as an expert security analyst collaborating with the user.
+- Your response should directly address the last message from the user in the chat history.
+"""
+
+    # ============================================================================
     # ENHANCED SYSTEM PROMPT
     # ============================================================================
     
@@ -519,5 +584,3 @@ Remember: never deviate from the plain text output requirement under any circums
             "user": AtlasPrompts.SCANNER_EXPLOITATION_VECTORS.format(issue_text="{scanner_issue}"),
             "assistant": "{expected_exploitation_vectors}"
         }
-    
-    

@@ -10,7 +10,8 @@ from javax.swing import (
 )
 from java.util import ArrayList
 from javax.swing import JMenuItem
-from java.io import PrintWriter
+from java.io import PrintWriter, InputStreamReader, BufferedReader
+from java.lang import Runtime
 import json
 import threading
 import time
@@ -21,6 +22,8 @@ from atlas_scanner_tab import AtlasScannerTab
 from atlas_scanner_findings_tab import AtlasScannerFindingsTab
 from atlas_adapters import OpenAIAdapter, GeminiAdapter, MistralAdapter, GroqAdapter, LocalLLMAdapter
 from atlas_config import AtlasConfig
+from atlas_recon import ReconManager
+from atlas_scenario import ScenarioManager
 
 class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorTabFactory, IScannerListener):
     """Main Atlas AI Extension class."""
@@ -36,8 +39,10 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
         self._stdout.println("[Atlas AI] Initializing extension...")
         
         self._config = AtlasConfig(callbacks)
+        self._scenario_manager = ScenarioManager(self)
         self._current_adapter = None
         self._ui_builder = AtlasUIBuilder(self)
+        self._recon_manager = ReconManager(self)
         self._response_cache = {}
         self._cache_lock = threading.Lock()
         self._max_cache_size = 100
@@ -55,7 +60,7 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
         callbacks.registerScannerListener(self)
         
         self._stdout.println("[Atlas AI] Extension loaded successfully!")
-        self._log_to_ui("Welcome to Atlas AI Pro! Configure your settings in the 'Atlas AI Config' tab to get started.")
+        self._log_to_ui("Welcome to Atlas AI Pro! Create or select a scenario to begin.")
     
     def getTabCaption(self):
         return "Atlas AI"
@@ -112,15 +117,30 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
 
     def _create_ui(self):
         self._main_panel = JPanel(BorderLayout())
-        header = self._create_header()
-        self._main_panel.add(header, BorderLayout.NORTH)
         
+        # Main Header
+        header = self._create_header()
+        
+        # Scenario Control Panel
+        scenario_panel = self._ui_builder.create_scenario_control_panel()
+        
+        # Combined Header Panel
+        top_panel = JPanel(BorderLayout())
+        top_panel.add(header, BorderLayout.NORTH)
+        top_panel.add(scenario_panel, BorderLayout.SOUTH)
+        
+        self._main_panel.add(top_panel, BorderLayout.NORTH)
+        
+        # Tabbed Pane
         self._tabbed_pane = JTabbedPane()
         self._config_panel = self._ui_builder.create_config_panel()
         self._tabbed_pane.addTab("Atlas AI Config", self._config_panel)
         
         self._analysis_panel = self._ui_builder.create_enhanced_analysis_panel()
         self._tabbed_pane.addTab("Atlas AI Analysis", self._analysis_panel)
+
+        self._recon_panel = self._ui_builder.create_recon_panel()
+        self._tabbed_pane.addTab("Recon", self._recon_panel)
         
         self._main_panel.add(self._tabbed_pane, BorderLayout.CENTER)
 
@@ -259,6 +279,11 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
                         oldest_key = next(iter(self._response_cache))
                         del self._response_cache[oldest_key]
             
+            # Add to active scenario
+            active_scenario = self.get_scenario_manager().get_active_scenario()
+            if active_scenario:
+                active_scenario.add_finding(result)
+
             return result
             
         except Exception as e:
@@ -403,24 +428,120 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
         return text
 
     def send_chat_message(self, message):
-        if not self._current_adapter: 
-            self._log_to_ui("Please configure your API settings first")
+        active_scenario = self._scenario_manager.get_active_scenario()
+        if not active_scenario:
+            self._log_to_ui("No active scenario. Please create one first.")
             return
-        
+
+        if not self._current_adapter: 
+            self._log_to_ui("Please configure your AI settings first")
+            return
+
+        # Add user message to history and UI
+        active_scenario.add_chat_message("You", message)
         self._ui_builder.append_to_chat("You: " + message + "\n\n")
-        
+
+        # Prepare context-aware prompt
+        from atlas_prompts import AtlasPrompts
+        context_prompt = AtlasPrompts.CONTEXTUAL_CHAT.format(
+            chat_history=active_scenario.get_full_chat_history(),
+            recon_results=active_scenario.recon_results,
+            findings="\n".join(active_scenario.findings)
+        )
+        final_prompt = context_prompt + "\n\n" + message
+
         def send():
             try:
-                response = self._current_adapter.send_message(message)
+                response = self._current_adapter.send_message(final_prompt)
+                # Add AI response to history and UI
+                active_scenario.add_chat_message("Atlas AI", response)
                 SwingUtilities.invokeLater(lambda: self._ui_builder.append_to_chat("Atlas AI: " + response + "\n\n" + "-" * 80 + "\n\n"))
             except Exception as e:
-                SwingUtilities.invokeLater(lambda: self._ui_builder.append_to_chat("ERROR: " + str(e) + "\n\n"))
+                error_msg = "ERROR: " + str(e)
+                active_scenario.add_chat_message("System", error_msg)
+                SwingUtilities.invokeLater(lambda: self._ui_builder.append_to_chat(error_msg + "\n\n"))
         
         thread = threading.Thread(target=send)
         thread.daemon = True
         thread.start()
 
+    def start_reconnaissance(self, target):
+        """Start a reconnaissance scan and store results in the active scenario."""
+        active_scenario = self._scenario_manager.get_active_scenario()
+        if not active_scenario:
+            self._log_to_ui("No active scenario. Please create one first.")
+            return
+        
+        self._recon_manager.start_recon(target)
+
+    def summarize_recon_results(self, results):
+        """Summarize reconnaissance results using AI and store in the active scenario."""
+        active_scenario = self._scenario_manager.get_active_scenario()
+        if not active_scenario:
+            self._log_to_ui("No active scenario. Please create one first.")
+            return
+
+        if not self._current_adapter:
+            self._log_to_ui("Please configure your AI backend first.")
+            return
+
+        self._log_to_ui("Summarizing reconnaissance results for scenario: {}".format(active_scenario.name))
+        active_scenario.set_recon_results(results)
+
+        def summarize():
+            try:
+                from atlas_prompts import AtlasPrompts
+                prompt = AtlasPrompts.RECON_SUMMARY + "\n\n" + results
+                response = self._current_adapter.send_message(prompt)
+                summary_text = "\n\n--- AI SUMMARY ---\n" + response
+                active_scenario.add_chat_message("System", "Recon Summary: " + response)
+                SwingUtilities.invokeLater(lambda: self._ui_builder.recon_output_area.append(summary_text))
+            except Exception as e:
+                error_text = "\n\n--- ERROR SUMMARIZING ---\n" + str(e)
+                SwingUtilities.invokeLater(lambda: self._ui_builder.recon_output_area.append(error_text))
+
+        thread = threading.Thread(target=summarize)
+        thread.daemon = True
+        thread.start()
+
+    def run_terminal_command(self, command):
+        """Runs a terminal command and streams the output to the recon UI."""
+        def stream_output():
+            try:
+                process = Runtime.getRuntime().exec(command)
+                
+                stdout_reader = BufferedReader(InputStreamReader(process.getInputStream()))
+                stderr_reader = BufferedReader(InputStreamReader(process.getErrorStream()))
+
+                line = stdout_reader.readLine()
+                while line is not None:
+                    final_line = line + "\n"
+                    SwingUtilities.invokeLater(lambda: self._ui_builder.recon_output_area.append(final_line))
+                    line = stdout_reader.readLine()
+
+                line = stderr_reader.readLine()
+                while line is not None:
+                    final_line = "[ERROR] " + line + "\n"
+                    SwingUtilities.invokeLater(lambda: self._ui_builder.recon_output_area.append(final_line))
+                    line = stderr_reader.readLine()
+
+                process.waitFor()
+                stdout_reader.close()
+                stderr_reader.close()
+
+            except Exception as e:
+                final_error = "[FATAL] Error executing command: " + str(e) + "\n"
+                SwingUtilities.invokeLater(lambda: self._ui_builder.recon_output_area.append(final_error))
+
+        thread = threading.Thread(target=stream_output)
+        thread.daemon = True
+        thread.start()
+
     def _log_to_ui(self, message):
+        active_scenario = self._scenario_manager.get_active_scenario()
+        if active_scenario:
+            active_scenario.add_chat_message("System", message)
+        
         timestamp = time.strftime("%H:%M:%S")
         self._ui_builder.append_to_chat("[" + timestamp + "] " + message + "\n")
     
@@ -429,6 +550,9 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
         self._status_label.setForeground(color)
 
     def newScanIssue(self, issue):
+        active_scenario = self._scenario_manager.get_active_scenario()
+        if active_scenario:
+            active_scenario.add_finding(self._build_scanner_issue_text(issue))
         if self._scanner_findings_tab:
             self._scanner_findings_tab.add_scanner_finding(issue)
     
@@ -436,6 +560,8 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
     def get_helpers(self): return self._helpers
     def get_stdout(self): return self._stdout
     def get_stderr(self): return self._stderr
+    def get_scenario_manager(self): return self._scenario_manager
+    def get_ui_builder(self): return self._ui_builder
     def get_current_adapter(self): return self._current_adapter
     def get_pending_selection_analysis(self):
         analysis = self._pending_selection_analysis

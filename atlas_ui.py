@@ -6,7 +6,7 @@ from java.awt.event import ActionListener, KeyAdapter, KeyEvent
 from javax.swing import (
     JPanel, JLabel, JButton, JTextArea, JScrollPane,
     JTextField, JPasswordField, BorderFactory, JComboBox,
-    JSplitPane, Box, BoxLayout, SwingUtilities, JTabbedPane
+    JSplitPane, Box, BoxLayout, SwingUtilities, JTabbedPane, JOptionPane
 )
 import threading
 
@@ -18,6 +18,8 @@ class AtlasUIBuilder:
         self.chat_area = None
         self.analysis_area = None
         self.input_area = None
+        self.recon_output_area = None
+        self.scenario_combo = None
         
         # UI components that need to be accessible
         self.backend_combo = None
@@ -39,7 +41,79 @@ class AtlasUIBuilder:
         # Scanner analysis components
         self.scanner_analysis_area = None
         self.analysis_tabbed_pane = None
-    
+
+    def create_scenario_control_panel(self):
+        """Creates the panel for creating and selecting scenarios."""
+        panel = JPanel()
+        panel.setLayout(BoxLayout(panel, BoxLayout.X_AXIS))
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder("Attack Scenario Control"),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ))
+
+        panel.add(JLabel("Active Scenario:"))
+        panel.add(Box.createHorizontalStrut(5))
+
+        self.scenario_combo = JComboBox()
+        self.update_scenario_list()
+        panel.add(self.scenario_combo)
+
+        panel.add(Box.createHorizontalStrut(10))
+
+        new_scenario_button = JButton("New Scenario")
+        panel.add(new_scenario_button)
+
+        # --- Action Listeners ---
+        class ScenarioSelectAction(ActionListener):
+            def __init__(self, extension, combo):
+                self.extension = extension
+                self.combo = combo
+
+            def actionPerformed(self, event):
+                selected = self.combo.getSelectedItem()
+                if selected:
+                    self.extension.get_scenario_manager().set_active_scenario(str(selected))
+
+        self.scenario_combo.addActionListener(ScenarioSelectAction(self.extension, self.scenario_combo))
+
+        class NewScenarioAction(ActionListener):
+            def __init__(self, extension):
+                self.extension = extension
+
+            def actionPerformed(self, event):
+                name = JOptionPane.showInputDialog(self.extension.getUiComponent(), "Enter new scenario name:")
+                if name and name.strip():
+                    try:
+                        self.extension.get_scenario_manager().create_scenario(name.strip())
+                        self.extension.get_ui_builder().update_scenario_list()
+                    except ValueError as e:
+                        JOptionPane.showMessageDialog(self.extension.getUiComponent(), str(e), "Error", JOptionPane.ERROR_MESSAGE)
+
+        new_scenario_button.addActionListener(NewScenarioAction(self.extension))
+
+        return panel
+
+    def update_scenario_list(self):
+        """Updates the dropdown with the latest list of scenarios."""
+        if self.scenario_combo is not None:
+            # Temporarily remove listener to prevent firing events during update
+            listeners = self.scenario_combo.getActionListeners()
+            for listener in listeners:
+                self.scenario_combo.removeActionListener(listener)
+
+            self.scenario_combo.removeAllItems()
+            scenarios = self.extension.get_scenario_manager().get_scenario_names()
+            for name in scenarios:
+                self.scenario_combo.addItem(name)
+            
+            active_scenario = self.extension.get_scenario_manager().get_active_scenario()
+            if active_scenario:
+                self.scenario_combo.setSelectedItem(active_scenario.name)
+
+            # Re-add the primary listener
+            if listeners:
+                self.scenario_combo.addActionListener(listeners[0])
+
     def create_settings_panel(self):
         """Create settings panel."""
         panel = JPanel(GridBagLayout())
@@ -381,11 +455,74 @@ class AtlasUIBuilder:
         
         return panel
 
+    def create_recon_panel(self):
+        """Create the reconnaissance panel."""
+        panel = JPanel(BorderLayout())
+        
+        # Input panel
+        input_panel = JPanel(BorderLayout())
+        input_panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
+        
+        target_field = JTextField(30)
+        target_field.setToolTipText("Enter a domain or IP address")
+        input_panel.add(target_field, BorderLayout.CENTER)
+        
+        start_button = JButton("Start Recon")
+        input_panel.add(start_button, BorderLayout.EAST)
+        
+        panel.add(input_panel, BorderLayout.NORTH)
+        
+        # Output area
+        self.recon_output_area = JTextArea()
+        self.recon_output_area.setEditable(False)
+        self.recon_output_area.setFont(Font("Monospaced", Font.PLAIN, 12))
+        self.recon_output_area.setLineWrap(True)
+        self.recon_output_area.setWrapStyleWord(True)
+        
+        output_scroll = JScrollPane(self.recon_output_area)
+        panel.add(output_scroll, BorderLayout.CENTER)
+        
+        # AI summary button
+        summarize_button = JButton("Get AI Summary")
+        panel.add(summarize_button, BorderLayout.SOUTH)
+
+        # Actions
+        class StartReconAction(ActionListener):
+            def __init__(self, extension, target_field, output_area):
+                self.extension = extension
+                self.target_field = target_field
+                self.output_area = output_area
+
+            def actionPerformed(self, event):
+                target = self.target_field.getText().strip()
+                if target:
+                    self.output_area.setText("Starting reconnaissance on: " + target + "\n\n")
+                    self.extension.start_reconnaissance(target)
+
+        start_button.addActionListener(StartReconAction(self.extension, target_field, self.recon_output_area))
+        
+        class SummarizeReconAction(ActionListener):
+            def __init__(self, extension, output_area):
+                self.extension = extension
+                self.output_area = output_area
+
+            def actionPerformed(self, event):
+                recon_results = self.output_area.getText()
+                if recon_results:
+                    self.extension.summarize_recon_results(recon_results)
+
+        summarize_button.addActionListener(SummarizeReconAction(self.extension, self.recon_output_area))
+
+        return panel
+
     def append_to_chat(self, text):
         """Append text to chat area."""
         if self.chat_area:
-            self.chat_area.append(text)
-            self.chat_area.setCaretPosition(self.chat_area.getDocument().getLength())
+            # Make sure this runs on the EDT
+            def append_task():
+                self.chat_area.append(text)
+                self.chat_area.setCaretPosition(self.chat_area.getDocument().getLength())
+            SwingUtilities.invokeLater(append_task)
 
     def show_in_analysis_panel(self, text):
         """Show text in analysis panel."""
