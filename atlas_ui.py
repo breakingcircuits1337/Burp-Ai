@@ -22,11 +22,17 @@ class AtlasUIBuilder:
         # UI components that need to be accessible
         self.backend_combo = None
         self.api_key_field = None
+        self.gemini_api_key_field = None
+        self.mistral_api_key_field = None
+        self.groq_api_key_field = None
         self.local_url_field = None
         self.local_api_key_field = None
         self.model_field = None
         self.timeout_field = None
         self.api_key_label = None
+        self.gemini_api_key_label = None
+        self.mistral_api_key_label = None
+        self.groq_api_key_label = None
         self.local_url_label = None
         self.local_api_key_label = None
         
@@ -62,9 +68,16 @@ class AtlasUIBuilder:
         
         gbc.gridx = 1
         gbc.fill = GridBagConstraints.HORIZONTAL
-        self.backend_combo = JComboBox(["OpenAI", "Local LLM"])
+        self.backend_combo = JComboBox(["OpenAI", "Gemini", "Mistral", "Groq", "Local LLM"])
         config_data = self.extension.get_config().get_all()
-        self.backend_combo.setSelectedItem("OpenAI" if config_data.get("backend") == "openai" else "Local LLM")
+        backend_map = {
+            "openai": "OpenAI",
+            "gemini": "Gemini",
+            "mistral": "Mistral",
+            "groq": "Groq",
+            "local": "Local LLM"
+        }
+        self.backend_combo.setSelectedItem(backend_map.get(config_data.get("backend"), "OpenAI"))
         
         class BackendAction(ActionListener):
             def __init__(self, ui_builder):
@@ -81,7 +94,7 @@ class AtlasUIBuilder:
         gbc.gridx = 0
         gbc.gridy = row
         gbc.fill = GridBagConstraints.NONE
-        self.api_key_label = JLabel("API Key:")
+        self.api_key_label = JLabel("OpenAI API Key:")
         panel.add(self.api_key_label, gbc)
         
         gbc.gridx = 1
@@ -89,6 +102,30 @@ class AtlasUIBuilder:
         self.api_key_field = JPasswordField(30)
         self.api_key_field.setText(config_data.get("api_key", ""))
         panel.add(self.api_key_field, gbc)
+        
+        # API Key (Gemini)
+        self.gemini_api_key_label = JLabel("Gemini API Key:")
+        panel.add(self.gemini_api_key_label, gbc)
+        
+        self.gemini_api_key_field = JPasswordField(30)
+        self.gemini_api_key_field.setText(config_data.get("gemini_api_key", ""))
+        panel.add(self.gemini_api_key_field, gbc)
+        
+        # API Key (Mistral)
+        self.mistral_api_key_label = JLabel("Mistral API Key:")
+        panel.add(self.mistral_api_key_label, gbc)
+        
+        self.mistral_api_key_field = JPasswordField(30)
+        self.mistral_api_key_field.setText(config_data.get("mistral_api_key", ""))
+        panel.add(self.mistral_api_key_field, gbc)
+
+        # API Key (Groq)
+        self.groq_api_key_label = JLabel("Groq API Key:")
+        panel.add(self.groq_api_key_label, gbc)
+
+        self.groq_api_key_field = JPasswordField(30)
+        self.groq_api_key_field.setText(config_data.get("groq_api_key", ""))
+        panel.add(self.groq_api_key_field, gbc)
         
         row += 1
         
@@ -118,38 +155,6 @@ class AtlasUIBuilder:
         self.local_api_key_field = JPasswordField(30)
         self.local_api_key_field.setText(config_data.get("local_api_key", ""))
         panel.add(self.local_api_key_field, gbc)
-        
-        row += 1
-        
-        # Custom Header Name (for Local LLM)
-        gbc.gridx = 0
-        gbc.gridy = row
-        gbc.fill = GridBagConstraints.NONE
-        self.local_custom_header_label = JLabel("Custom Header Name:")
-        panel.add(self.local_custom_header_label, gbc)
-        
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL
-        self.local_custom_header_field = JTextField(config_data.get("local_custom_header", ""))
-        self.local_custom_header_field.setToolTipText("e.g., x-api-key, Authorization, api-key")
-        panel.add(self.local_custom_header_field, gbc)
-        
-        row += 1
-        
-        # Header Format (for Local LLM)
-        gbc.gridx = 0
-        gbc.gridy = row
-        gbc.fill = GridBagConstraints.NONE
-        self.local_header_format_label = JLabel("Header Format:")
-        panel.add(self.local_header_format_label, gbc)
-        
-        gbc.gridx = 1
-        gbc.fill = GridBagConstraints.HORIZONTAL
-        self.local_header_format_combo = JComboBox(["Bearer", "Basic", "None"])
-        selected_format = config_data.get("local_header_format", "Bearer")
-        self.local_header_format_combo.setSelectedItem(selected_format)
-        self.local_header_format_combo.setToolTipText("Bearer: 'Bearer {key}', Basic: 'Basic {key}', None: '{key}'")
-        panel.add(self.local_header_format_combo, gbc)
         
         row += 1
         
@@ -210,26 +215,100 @@ class AtlasUIBuilder:
         
         panel.add(button_panel, gbc)
         
-        row += 1
-        
-        # Signature
-        gbc.gridx = 0
-        gbc.gridy = row
-        gbc.gridwidth = 2
-        gbc.fill = GridBagConstraints.NONE
-        gbc.anchor = GridBagConstraints.CENTER
-        gbc.insets = Insets(20, 10, 10, 10)
-        signature = JLabel("Diabl0-Sec")
-        signature.setFont(Font("Arial", Font.ITALIC, 14))
-        signature.setForeground(Color(128, 128, 128))
-        panel.add(signature, gbc)
-        
         # Update field visibility
         self.update_backend_fields()
         
         return panel
     
+    def update_backend_fields(self):
+        """Update field visibility based on backend selection."""
+        selected = self.backend_combo.getSelectedItem()
+        
+        is_openai = selected == "OpenAI"
+        is_gemini = selected == "Gemini"
+        is_mistral = selected == "Mistral"
+        is_groq = selected == "Groq"
+        is_local = selected == "Local LLM"
+        
+        # API Key fields
+        self.api_key_label.setVisible(is_openai)
+        self.api_key_field.setVisible(is_openai)
+        self.gemini_api_key_label.setVisible(is_gemini)
+        self.gemini_api_key_field.setVisible(is_gemini)
+        self.mistral_api_key_label.setVisible(is_mistral)
+        self.mistral_api_key_field.setVisible(is_mistral)
+        self.groq_api_key_label.setVisible(is_groq)
+        self.groq_api_key_field.setVisible(is_groq)
+        
+        # Local LLM fields
+        self.local_url_label.setVisible(is_local)
+        self.local_url_field.setVisible(is_local)
+        self.local_api_key_label.setVisible(is_local)
+        self.local_api_key_field.setVisible(is_local)
+        
+        # Update model field based on backend
+        config = self.extension.get_config()
+        if is_openai:
+            self.model_field.setText(config.get("model", "gpt-3.5-turbo"))
+        elif is_gemini:
+            self.model_field.setText(config.get("gemini_model", "gemini-pro"))
+        elif is_mistral:
+            self.model_field.setText(config.get("mistral_model", "mistral-small-latest"))
+        elif is_groq:
+            self.model_field.setText(config.get("groq_model", "mixtral-8x7b-32768"))
+        elif is_local:
+            self.model_field.setText(config.get("model", "local-model"))
     
+    def save_settings(self):
+        """Save settings from UI."""
+        try:
+            backend_map = {
+                "OpenAI": "openai",
+                "Gemini": "gemini",
+                "Mistral": "mistral",
+                "Groq": "groq",
+                "Local LLM": "local"
+            }
+            backend = backend_map.get(self.backend_combo.getSelectedItem())
+            
+            api_key = "".join(self.api_key_field.getPassword())
+            gemini_api_key = "".join(self.gemini_api_key_field.getPassword())
+            mistral_api_key = "".join(self.mistral_api_key_field.getPassword())
+            groq_api_key = "".join(self.groq_api_key_field.getPassword())
+            local_url = self.local_url_field.getText().strip()
+            local_api_key = "".join(self.local_api_key_field.getPassword())
+            model = self.model_field.getText().strip()
+            
+            try:
+                timeout = int(self.timeout_field.getText().strip())
+            except:
+                timeout = 60
+            
+            settings = {
+                "backend": backend,
+                "api_key": api_key,
+                "gemini_api_key": gemini_api_key,
+                "mistral_api_key": mistral_api_key,
+                "groq_api_key": groq_api_key,
+                "local_url": local_url,
+                "local_api_key": local_api_key,
+                "model": model,
+                "timeout": timeout
+            }
+            
+            # Save the correct model based on backend
+            if backend == "gemini":
+                settings["gemini_model"] = model
+            elif backend == "mistral":
+                settings["mistral_model"] = model
+            elif backend == "groq":
+                settings["groq_model"] = model
+
+            self.extension.save_settings(settings)
+            
+        except Exception as e:
+            self.append_to_chat("ERROR: Failed to save settings - " + str(e) + "\n")
+
     def create_chat_panel(self):
         """Create chat interface."""
         panel = JPanel(BorderLayout())
@@ -301,138 +380,19 @@ class AtlasUIBuilder:
         panel.add(split_pane, BorderLayout.CENTER)
         
         return panel
-    
-    def create_help_panel(self):
-        """Create help panel."""
-        panel = JPanel(BorderLayout())
-        
-        help_text = JTextArea()
-        help_text.setEditable(False)
-        help_text.setFont(Font("Monospaced", Font.BOLD, 17))  # Bold 17pt font
-        help_text.setLineWrap(True)
-        help_text.setWrapStyleWord(True)
-        
-        help_content = """Atlas AI Pro - Advanced Security Analysis
 
-EXTENSION STRUCTURE:
+    def append_to_chat(self, text):
+        """Append text to chat area."""
+        if self.chat_area:
+            self.chat_area.append(text)
+            self.chat_area.setCaretPosition(self.chat_area.getDocument().getLength())
 
-1. ATLAS AI CONFIG TAB
-   • Settings: Configure AI backend (OpenAI or Local LLM)
-   • Chat: Interactive chat with Atlas AI
-   • Help: This documentation
+    def show_in_analysis_panel(self, text):
+        """Show text in analysis panel."""
+        if self.analysis_area:
+            self.analysis_area.setText(text)
+            self.analysis_area.setCaretPosition(0)
 
-2. ATLAS AI ANALYSIS TAB
-   • General Analysis: Results from context menu actions
-   • Scanner Findings: Scanner issue analyses and exploitation vectors
-
-FEATURES:
-
-1. HTTP REQUEST ANALYSIS
-   • Right-click any HTTP message → "Analyze Request"
-   • Analyzes request headers, parameters, and body
-   • Results appear in Atlas AI Analysis → General Analysis
-
-2. HTTP RESPONSE ANALYSIS
-   • Right-click any HTTP message → "Analyze Response"
-   • Analyzes response headers and body
-   • Results appear in Atlas AI Analysis → General Analysis
-
-3. FULL VULNERABILITY DETECTION
-   • Right-click any HTTP message → "Find Vulnerabilities (Full)"
-   • Complete analysis of both request and response
-   • Detects: SQLi, XSS, XXE, SSRF, Command Injection, IDOR, etc.
-
-4. EXPLAIN SELECTION
-   • Highlight any text in Burp → Right-click → "Explain Selection"
-   • AI explains what the selected content does
-   • Shows in message editor Atlas AI tab
-
-5. SCANNER FINDING ANALYSIS
-   • Right-click scanner issue → "Analyze & Explain Finding"
-   • Detailed vulnerability explanation
-   • Results appear in Atlas AI Analysis → Scanner Findings
-
-6. EXPLOITATION VECTORS
-   • Right-click scanner issue → "Suggest Exploitation"
-   • Multiple attack vectors and payloads
-   • Results appear in Atlas AI Analysis → Scanner Findings
-
-7. REQUEST/RESPONSE IN MESSAGE TABS
-   • Click "Atlas AI" tab in any HTTP message editor
-   • Full security analysis of the exchange
-
-USAGE:
-1. Configure AI backend in Atlas AI Config → Settings
-2. Use context menus for analysis
-3. View results in Atlas AI Analysis tab
-4. Chat for specific questions in Atlas AI Config → Chat
-
-Version: 5.2.0
-Compatible with Burp Suite 2025.x"""
-        
-        help_text.setText(help_content)
-        help_scroll = JScrollPane(help_text)
-        panel.add(help_scroll, BorderLayout.CENTER)
-        
-        return panel
-    
-    def update_backend_fields(self):
-        """Update field visibility based on backend selection."""
-        is_openai = self.backend_combo.getSelectedItem() == "OpenAI"
-        
-        self.api_key_label.setVisible(is_openai)
-        self.api_key_field.setVisible(is_openai)
-        self.local_url_label.setVisible(not is_openai)
-        self.local_url_field.setVisible(not is_openai)
-        self.local_api_key_label.setVisible(not is_openai)
-        self.local_api_key_field.setVisible(not is_openai)
-        self.local_custom_header_label.setVisible(not is_openai)
-        self.local_custom_header_field.setVisible(not is_openai)
-        self.local_header_format_label.setVisible(not is_openai)
-        self.local_header_format_combo.setVisible(not is_openai)
-        
-        if is_openai:
-            self.model_field.setText("gpt-3.5-turbo")
-        else:
-            self.model_field.setText("local-model")
-    
-    def save_settings(self):
-        """Save settings from UI."""
-        try:
-            backend = "openai" if self.backend_combo.getSelectedItem() == "OpenAI" else "local"
-            api_key = "".join(self.api_key_field.getPassword())
-            local_url = self.local_url_field.getText().strip()
-            local_api_key = "".join(self.local_api_key_field.getPassword())
-            model = self.model_field.getText().strip()
-            
-            try:
-                timeout = int(self.timeout_field.getText().strip())
-                if timeout < 10:
-                    timeout = 10
-                elif timeout > 300:
-                    timeout = 300
-            except:
-                timeout = 60
-            
-            local_custom_header = self.local_custom_header_field.getText().strip()
-            local_header_format = self.local_header_format_combo.getSelectedItem()
-            
-            settings = {
-                "backend": backend,
-                "api_key": api_key,
-                "local_url": local_url,
-                "local_api_key": local_api_key,
-                "local_custom_header": local_custom_header,
-                "local_header_format": local_header_format,
-                "model": model,
-                "timeout": timeout
-            }
-            
-            self.extension.save_settings(settings)
-            
-        except Exception as e:
-            self.append_to_chat("ERROR: Failed to save settings - " + str(e) + "\n")
-    
     def send_chat_message(self):
         """Send chat message."""
         message = self.input_area.getText().strip()
@@ -441,19 +401,7 @@ Compatible with Burp Suite 2025.x"""
         
         self.input_area.setText("")
         self.extension.send_chat_message(message)
-    
-    def append_to_chat(self, text):
-        """Append text to chat area."""
-        if self.chat_area:
-            self.chat_area.append(text)
-            self.chat_area.setCaretPosition(self.chat_area.getDocument().getLength())
-    
-    def show_in_analysis_panel(self, text):
-        """Show text in analysis panel."""
-        if self.analysis_area:
-            self.analysis_area.setText(text)
-            self.analysis_area.setCaretPosition(0)
-    
+
     def create_config_panel(self):
         """Create combined config panel with settings and help."""
         panel = JPanel(BorderLayout())
@@ -468,14 +416,10 @@ Compatible with Burp Suite 2025.x"""
         # Chat tab
         chat_panel = self.create_chat_panel()
         config_tabs.addTab("Chat", chat_panel)
-        
-        # Help tab
-        help_panel = self.create_help_panel()
-        config_tabs.addTab("Help", help_panel)
-        
+
         panel.add(config_tabs, BorderLayout.CENTER)
         return panel
-    
+
     def create_enhanced_analysis_panel(self):
         """Create enhanced analysis panel with tabs for different analysis types."""
         panel = JPanel(BorderLayout())
@@ -502,19 +446,6 @@ Compatible with Burp Suite 2025.x"""
         analysis_scroll = JScrollPane(self.analysis_area)
         general_panel.add(analysis_scroll, BorderLayout.CENTER)
         
-        # Control panel for general analysis
-        general_control = JPanel()
-        clear_btn = JButton("Clear")
-        clear_btn.setFont(Font("Arial", Font.PLAIN, 14))
-        class ClearGeneralAction(ActionListener):
-            def __init__(self, ui_builder):
-                self.ui_builder = ui_builder
-            def actionPerformed(self, event):
-                self.ui_builder.analysis_area.setText("")
-        clear_btn.addActionListener(ClearGeneralAction(self))
-        general_control.add(clear_btn)
-        general_panel.add(general_control, BorderLayout.SOUTH)
-        
         self.analysis_tabbed_pane.addTab("General Analysis", general_panel)
         
         # Scanner Findings tab
@@ -529,134 +460,7 @@ Compatible with Burp Suite 2025.x"""
         scanner_scroll = JScrollPane(self.scanner_analysis_area)
         scanner_panel.add(scanner_scroll, BorderLayout.CENTER)
         
-        # Control panel for scanner analysis
-        scanner_control = JPanel()
-        clear_scanner_btn = JButton("Clear")
-        clear_scanner_btn.setFont(Font("Arial", Font.PLAIN, 14))
-        class ClearScannerAction(ActionListener):
-            def __init__(self, ui_builder):
-                self.ui_builder = ui_builder
-            def actionPerformed(self, event):
-                self.ui_builder.scanner_analysis_area.setText("")
-        clear_scanner_btn.addActionListener(ClearScannerAction(self))
-        scanner_control.add(clear_scanner_btn)
-        scanner_panel.add(scanner_control, BorderLayout.SOUTH)
-        
         self.analysis_tabbed_pane.addTab("Scanner Findings", scanner_panel)
         
         panel.add(self.analysis_tabbed_pane, BorderLayout.CENTER)
         return panel
-    
-    def analyze_scanner_finding_in_tab(self, issue, analysis_type):
-        """Analyze scanner finding and show in the main analysis tab."""
-        # Switch to scanner findings tab
-        if self.analysis_tabbed_pane:
-            self.analysis_tabbed_pane.setSelectedIndex(1)  # Scanner Findings tab
-        
-        # Show loading message
-        if analysis_type == "exploitation":
-            self.scanner_analysis_area.setText("Generating exploitation vectors...\n\n" + self._get_issue_summary(issue))
-        else:
-            self.scanner_analysis_area.setText("Analyzing scanner finding...\n\n" + self._get_issue_summary(issue))
-        
-        # Build issue text
-        issue_text = self.extension._build_scanner_issue_text(issue)
-        
-        # Analyze in background
-        def analyze():
-            try:
-                if analysis_type == "exploitation":
-                    # Exploitation-focused prompt
-                    prompt = """Exploitation vectors:
-
-""" + issue_text + """
-
-IMPORTANT: Technical output only. Focus on practical exploitation.
-
-ATTACK VECTORS:
-- Specific attack techniques
-- Step-by-step exploitation
-- Required conditions
-
-PAYLOADS:
-- Working exploit payloads
-- Variations for different contexts
-- Bypass techniques
-
-TOOLS:
-- Recommended tools
-- Tool commands/configuration
-- Automation scripts
-
-CHAINING:
-- How to chain with other vulnerabilities
-- Privilege escalation paths
-- Full compromise scenarios
-
-IMPACT DEMONSTRATION:
-- Proof of concept code
-- Data extraction methods
-- System compromise indicators"""
-                    title = "EXPLOITATION ANALYSIS"
-                else:
-                    # Standard comprehensive analysis
-                    prompt = """Comprehensive security analysis of this scanner finding.
-
-""" + issue_text + """
-
-IMPORTANT: Provide a detailed technical analysis. Be concise but thorough.
-
-VULNERABILITY ANALYSIS:
-- Type and classification
-- Root cause
-- Attack vectors
-
-VERIFICATION:
-- How to confirm this is a true positive
-- Manual testing steps
-- Expected behavior vs actual behavior
-
-EXPLOITATION:
-- Proof of concept
-- Potential impact
-- Attack scenarios
-
-FALSE POSITIVE CHECK:
-- Common false positive indicators
-- Verification methods
-
-REMEDIATION:
-- Specific code fixes
-- Security controls needed
-- Testing approach"""
-                    title = "AI VULNERABILITY ANALYSIS"
-                
-                response = self.extension.get_current_adapter().send_message(prompt)
-                result = title + "\n" + "=" * 60 + "\n\n"
-                result += "Issue: " + issue.getIssueName() + "\n"
-                result += "URL: " + str(issue.getUrl()) + "\n"
-                result += "=" * 60 + "\n\n"
-                result += response
-                
-                SwingUtilities.invokeLater(lambda: self.show_scanner_result(result))
-            except Exception as e:
-                SwingUtilities.invokeLater(lambda: self.show_scanner_result("Error during analysis: " + str(e)))
-        
-        import threading
-        thread = threading.Thread(target=analyze)
-        thread.daemon = True
-        thread.start()
-    
-    def _get_issue_summary(self, issue):
-        """Get a brief summary of the issue."""
-        summary = "Issue: " + issue.getIssueName() + "\n"
-        summary += "URL: " + str(issue.getUrl()) + "\n"
-        summary += "Severity: " + issue.getSeverity() + "\n"
-        summary += "Confidence: " + issue.getConfidence()
-        return summary
-    
-    def show_scanner_result(self, result):
-        """Show scanner analysis result."""
-        if self.scanner_analysis_area:
-            self.scanner_analysis_area.setText(result)
-            self.scanner_analysis_area.setCaretPosition(0)

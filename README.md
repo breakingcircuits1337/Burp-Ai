@@ -1,6 +1,6 @@
 # Atlas AI Pro - Advanced Security Analysis for Burp Suite
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/your-username/atlas-ai-pro)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/your-username/atlas-ai-pro)
 [![Burp Suite](https://img.shields.io/badge/Burp%20Suite-Professional%202025.x-orange.svg)](https://portswigger.net/burp)
 [![Python](https://img.shields.io/badge/python-Jython-yellow.svg)](https://www.jython.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -34,6 +34,7 @@ Atlas AI Pro prioritizes your data privacy by supporting completely local AI mod
 - **Private Local Models** - Deploy enterprise-grade AI models on your own hardware
 - **Multiple Local Platforms** - LM Studio, Ollama, Text Generation WebUI, vLLM, and more
 - **OpenAI Integration** - GPT-3.5, GPT-4, and GPT-4-turbo support (optional)
+- **Gemini, Mistral, and Groq Integration** - Support for additional powerful cloud-based AI models.
 - **Hybrid Deployment** - Mix local and cloud models based on sensitivity
 
 ## 📸 Screenshots
@@ -59,7 +60,7 @@ Atlas AI Pro prioritizes your data privacy by supporting completely local AI mod
 ### Prerequisites
 - Burp Suite Professional 2025.x
 - Python/Jython support in Burp Suite
-- API access (OpenAI API key or local LLM setup)
+- API access (OpenAI, Gemini, Mistral, Groq API key or local LLM setup)
 
 ### Quick Setup
 
@@ -78,7 +79,7 @@ Atlas AI Pro prioritizes your data privacy by supporting completely local AI mod
 3. **Configure AI Backend**
    - Navigate to the **Atlas AI** tab in Burp Suite
    - Choose your backend:
-     - **OpenAI**: Enter your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+     - **OpenAI, Gemini, Mistral, or Groq**: Enter your API key from the respective platform.
      - **Local LLM**: Enter your local endpoint URL (e.g., `http://localhost:1234/v1/chat/completions`)
    - Set your preferred model
    - Configure timeout (10-300 seconds)
