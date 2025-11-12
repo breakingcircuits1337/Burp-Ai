@@ -17,7 +17,7 @@ class BaseAdapter(object):
         self._callbacks = callbacks
         self._helpers = callbacks.getHelpers()
     
-    def send_message(self, message):
+    def send_message(self, message, image_bytes=None, mime_type=None):
         """Send message to AI backend. Must be implemented by subclasses."""
         raise NotImplementedError("Subclasses must implement send_message")
 
@@ -33,7 +33,7 @@ class OpenAIAdapter(BaseAdapter):
         self.max_tokens = max_tokens
         self.endpoint = "https://api.openai.com/v1/chat/completions"
     
-    def send_message(self, message):
+    def send_message(self, message, image_bytes=None, mime_type=None):
         """Send message to OpenAI using Burp's HTTP client."""
         if not self._callbacks:
             raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")
@@ -115,26 +115,40 @@ class OpenAIAdapter(BaseAdapter):
 class GeminiAdapter(BaseAdapter):
     """Google Gemini API adapter."""
 
-    def __init__(self, api_key, model="gemini-pro", temperature=0.3, max_tokens=3000, timeout=60):
+    def __init__(self, api_key, model="gemini-pro", temperature=0.3, max_tokens=3000, timeout=60, vision_enabled=False):
         super(GeminiAdapter, self).__init__(timeout)
         self.api_key = api_key
-        self.model = model
+        self.model = "gemini-pro-vision" if vision_enabled else model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent".format(self.model)
+        self.endpoint_model = "gemini-pro-vision" if vision_enabled else "gemini-pro"
+        self.endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent".format(self.endpoint_model)
 
-    def send_message(self, message):
+    def send_message(self, message, image_bytes=None, mime_type=None):
         if not self._callbacks:
             raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")
 
         from atlas_prompts import AtlasPrompts
 
         # Gemini uses a different format
-        contents = [{
-            "parts": [{
-                "text": AtlasPrompts.SYSTEM_PROMPT + "\n\n" + message
-            }]
-        }]
+        parts = [{"text": AtlasPrompts.SYSTEM_PROMPT + "\n\n" + message}]
+
+        if image_bytes and mime_type:
+            if not self.model == "gemini-pro-vision":
+                raise Exception("Vision is not enabled for this Gemini model. Please enable it in the configuration.")
+            
+            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+            image_part = {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": encoded_image
+                }
+            }
+            parts.insert(0, {"text": "Analyze this image from a security perspective."})
+            parts.append(image_part)
+
+
+        contents = [{"parts": parts}]
 
         payload = {
             "contents": contents,
@@ -175,6 +189,14 @@ class GeminiAdapter(BaseAdapter):
 
             if status_code == 200:
                 response_json = json.loads(response_body)
+
+                if not response_json.get("candidates"):
+                    finish_reason = response_json.get("promptFeedback", {}).get("blockReason")
+                    if finish_reason == "SAFETY":
+                        return "Error: The response was blocked by the API for safety reasons. The prompt or image may have violated the safety policy."
+                    else:
+                        return "Error: The API returned an empty response. Finish Reason: {}".format(finish_reason or "Unknown")
+
                 if "candidates" in response_json and response_json["candidates"]:
                     part = response_json["candidates"][0]["content"]["parts"][0]
                     return part["text"].strip()
@@ -197,7 +219,7 @@ class MistralAdapter(BaseAdapter):
         self.max_tokens = max_tokens
         self.endpoint = "https://api.mistral.ai/v1/chat/completions"
 
-    def send_message(self, message):
+    def send_message(self, message, image_bytes=None, mime_type=None):
         if not self._callbacks:
             raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")
 
@@ -267,7 +289,7 @@ class GroqAdapter(BaseAdapter):
         self.max_tokens = max_tokens
         self.endpoint = "https://api.groq.com/openai/v1/chat/completions"
 
-    def send_message(self, message):
+    def send_message(self, message, image_bytes=None, mime_type=None):
         if not self._callbacks:
             raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")
 
@@ -422,7 +444,7 @@ class LocalLLMAdapter(BaseAdapter):
             "data_transmission": "None (local processing only)" if is_localhost else "Internal network only"
         }
     
-    def send_message(self, message):
+    def send_message(self, message, image_bytes=None, mime_type=None):
         """Send message to Local LLM using Burp's HTTP client."""
         if not self._callbacks:
             raise Exception("Burp callbacks not set. Call set_burp_callbacks() first.")

@@ -9,7 +9,7 @@ class AtlasPrompts:
     # HTTP REQUEST/RESPONSE ANALYSIS PROMPTS
     # ============================================================================
     
-    REQUEST_ANALYSIS = """Perform a thorough security analysis of the following HTTP request from a penetration tester's perspective. Focus on the specific details of the request (URL, headers, parameters, body) to identify vulnerabilities.
+    REQUEST_ANALYSIS = '''Perform a thorough security analysis of the following HTTP request from a penetration tester's perspective. Focus on the specific details of the request (URL, headers, parameters, body) to identify vulnerabilities.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY - do not use HTML, Markdown, JSON, XML, or any other formatting.
@@ -60,9 +60,30 @@ Debug or verbose information leakage
 Internal system details revealed (e.g., IPs, software versions)
 
 SPECIFIC PAYLOADS TO TEST:
-Provide 3 to 5 concrete payloads for the most promising attack vectors identified above, including the exact parameter or part of the request they target."""
+Provide 3 to 5 concrete payloads for the most promising attack vectors identified above, including the exact parameter or part of the request they target.
+
+ACTIONABLE_COMMAND:
+If you identify a vulnerability that can be effectively tested or exploited with a common command-line tool (like sqlmap, nmap, whatweb, ffuf, etc.), provide a single, ready-to-run command.
+CRITICAL: The command MUST be encapsulated in a JSON object within special markers. The format is:
+%%ATLAS_COMMAND_START%%
+{
+  "tool": "tool_name",
+  "command": "full_command_string"
+}
+%%ATLAS_COMMAND_END%%
+Replace "tool_name" with the executable name (e.g., "sqlmap").
+Replace "full_command_string" with the complete command to run.
+The JSON must be valid. The command string should be properly escaped for a shell.
+Example for SQLi:
+%%ATLAS_COMMAND_START%%
+{
+  "tool": "sqlmap",
+  "command": "sqlmap -u \'''http://example.com/search?id=1\''' --batch --level 5 --risk 3 -p id"
+}
+%%ATLAS_COMMAND_END%%
+If no tool is applicable, omit the ACTIONABLE_COMMAND section entirely.'''
     
-    RESPONSE_ANALYSIS = """Analyze the following HTTP response for security vulnerabilities from a bug bounty hunter's perspective. Use specifics from the response (headers and body content) to identify issues.
+    RESPONSE_ANALYSIS = '''Analyze the following HTTP response for security vulnerabilities from a bug bounty hunter's perspective. Use specifics from the response (headers and body content) to identify issues.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY - do not use HTML, Markdown, JSON, XML, or any other formatting.
@@ -118,9 +139,9 @@ EXPLOITATION TECHNIQUES:
 Specific methods to exploit the identified issues (e.g., crafting malicious inputs, intercepting and modifying responses)
 
 BURP SUITE INTEGRATION:
-Suggested Burp Suite payloads or tools (e.g., Intruder, Repeater, or Scanner configurations) to verify and exploit these findings"""
+Suggested Burp Suite payloads or tools (e.g., Intruder, Repeater, or Scanner configurations) to verify and exploit these findings'''
     
-    PAYLOAD_GENERATION = """Analyze the following HTTP request and response to generate context-aware attack payloads for penetration testing. Base your payloads on the specific parameters, endpoints, headers, and response patterns observed. Tailor the attack vectors to exploit potential vulnerabilities in this specific context.
+    PAYLOAD_GENERATION = '''Analyze the following HTTP request and response to generate context-aware attack payloads for penetration testing. Base your payloads on the specific parameters, endpoints, headers, and response patterns observed. Tailor the attack vectors to exploit potential vulnerabilities in this specific context.
 
 {http_context}
 
@@ -198,9 +219,9 @@ PAYLOAD: [the exact malicious input tailored to this context]
 PURPOSE: [what this payload tests based on the observed behavior]  
 DETECTION: [how to identify success given the response patterns]
 
-Focus on the actual parameters, endpoints, and patterns from the HTTP data above. Do not generate generic payloads - make them specific to this target."""
+Focus on the actual parameters, endpoints, and patterns from the HTTP data above. Do not generate generic payloads - make them specific to this target.'''
     
-    SELECTION_EXPLANATION = """Analyze the following selected code or content from a security perspective (geared towards bug bounty hunting). Focus your analysis on details present in the snippet without making unfounded assumptions.
+    SELECTION_EXPLANATION = '''Analyze the following selected code or content from a security perspective (geared towards bug bounty hunting). Focus your analysis on details present in the snippet without making unfounded assumptions.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY - do not use HTML, Markdown, JSON, XML, or any other formatted output.
@@ -245,13 +266,13 @@ Provide example payloads or techniques to try for this snippet
 INFORMATION GATHERING:
 Identify any sensitive information exposed (e.g., keys, credentials, file paths)  
 Note technology stack or framework details that can be inferred  
-Highlight internal architecture clues or configuration details present in the snippet"""
+Highlight internal architecture clues or configuration details present in the snippet'''
     
     # ============================================================================
     # SCANNER FINDING ANALYSIS PROMPTS
     # ============================================================================
     
-    SCANNER_FINDING_ANALYSIS = """Perform an expert-level analysis of the Burp Scanner finding provided. Use details from the issue description above to inform a deep technical assessment and exploitation plan.
+    SCANNER_FINDING_ANALYSIS = '''Perform an expert-level analysis of the Burp Scanner finding provided. Use details from the issue description above to inform a deep technical assessment and exploitation plan.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY - output should contain no HTML, Markdown, JSON, XML, or other formatting.
@@ -304,9 +325,9 @@ Suggest effective remediation steps and how to verify the fix
 
 ADVANCED SCENARIOS:
 If applicable, describe how to bypass common defenses (WAF, rate limiting, CAPTCHA, MFA) related to this vulnerability  
-Consider any unconventional attack vectors or creative exploits that tie into this issue"""
+Consider any unconventional attack vectors or creative exploits that tie into this issue'''
     
-    SCANNER_EXPLOITATION_VECTORS = """Develop a comprehensive exploitation strategy for the identified vulnerability. Base your roadmap on the details given in the issue description above.
+    SCANNER_EXPLOITATION_VECTORS = '''Develop a comprehensive exploitation strategy for the identified vulnerability. Base your roadmap on the details given in the issue description above.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY - do not produce any HTML, Markdown, JSON, XML, or other formatted output.
@@ -363,13 +384,13 @@ Highlight stealthy techniques for exfiltrating sensitive information without imm
 IMPACT DEMONSTRATION:
 Describe how to convincingly demonstrate the impact to stakeholders (for instance, by showing unauthorized data access or system control)  
 Include examples of data or functionality an attacker could compromise  
-Explain how this exploit could lead to full system compromise or a significant data breach"""
+Explain how this exploit could lead to full system compromise or a significant data breach'''
     
     # ============================================================================
     # SELECTION ANALYSIS PROMPTS
     # ============================================================================
     
-    SELECTION_ANALYSIS = """Analyze the following selected code or content from a security perspective (geared towards bug bounty hunting). Focus your analysis on details present in the snippet without making unfounded assumptions.
+    SELECTION_ANALYSIS = '''Analyze the following selected code or content from a security perspective (geared towards bug bounty hunting). Focus your analysis on details present in the snippet without making unfounded assumptions.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY - do not use HTML, Markdown, JSON, XML, or any other formatted output.
@@ -412,13 +433,13 @@ Provide example payloads or techniques to try for this snippet
 INFORMATION GATHERING:
 Identify any sensitive information exposed (e.g., keys, credentials, file paths)  
 Note technology stack or framework details that can be inferred  
-Highlight internal architecture clues or configuration details present in the snippet"""
+Highlight internal architecture clues or configuration details present in the snippet'''
     
     # ============================================================================
     # RECONNAISSANCE PROMPT
     # ============================================================================
 
-    RECON_SUMMARY = """Analyze the following reconnaissance results from a penetration tester's perspective. The results may include output from tools like nmap and whatweb. Your task is to summarize the findings, identify potential attack vectors, and suggest the next steps in the penetration testing process.
+    RECON_SUMMARY = '''Analyze the following reconnaissance results from a penetration tester's perspective. The results may include output from tools like nmap and whatweb. Your task is to summarize the findings, identify potential attack vectors, and suggest the next steps in the penetration testing process.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY - do not use HTML, Markdown, JSON, XML, or any other formatting.
@@ -446,13 +467,13 @@ Identify the most promising attack vectors based on the open ports, services, an
 
 NEXT STEPS:
 Suggest 3-5 specific, actionable next steps for the penetration tester to take. These could include more targeted scanning, vulnerability analysis, or exploitation attempts.
-"""
+'''
 
     # ============================================================================
     # CONTEXTUAL CHAT PROMPT
     # ============================================================================
 
-    CONTEXTUAL_CHAT = """You are Atlas AI, a context-aware cybersecurity assistant. Your role is to provide intelligent, relevant, and actionable advice based on the full history of the current attack scenario. Use the provided context to inform your responses, connecting new questions to previous findings.
+    CONTEXTUAL_CHAT = '''You are Atlas AI, a context-aware cybersecurity assistant. Your role is to provide intelligent, relevant, and actionable advice based on the full history of the current attack scenario. Use the provided context to inform your responses, connecting new questions to previous findings.
 
 CRITICAL OUTPUT REQUIREMENTS:
 PLAIN TEXT ONLY. No Markdown, HTML, or other formatting.
@@ -477,13 +498,13 @@ Based on the complete context of this attack scenario, provide a concise and act
 - If the user asks for next steps, base your suggestions on what has already been discovered.
 - Maintain a consistent persona as an expert security analyst collaborating with the user.
 - Your response should directly address the last message from the user in the chat history.
-"""
+'''
 
     # ============================================================================
     # ENHANCED SYSTEM PROMPT
     # ============================================================================
     
-    SYSTEM_PROMPT = """You are a highly advanced cybersecurity AI assistant with expertise in offensive security testing, penetration testing, and bug bounty hunting. Your role is to provide detailed, technical, and actionable analysis for each query.
+    SYSTEM_PROMPT = '''You are a highly advanced cybersecurity AI assistant with expertise in offensive security testing, penetration testing, and bug bounty hunting. Your role is to provide detailed, technical, and actionable analysis for each query.
 
 CRITICAL OUTPUT REQUIREMENTS:
 Always output in plain text only (no HTML, Markdown, JSON, XML or other markup).
@@ -528,7 +549,7 @@ Provide answers that are well-structured in plain text form, using clear section
 When enumerating steps or points, use line breaks or simple labels, **not** bullet points or numbered lists.  
 Include tool configurations, specific payloads, and proof-of-concept details where they add value to the answer (always in plain text format).  
 Maintain a professional, objective tone as if writing an expert pentest report.  
-Remember: never deviate from the plain text output requirement under any circumstances."""
+Remember: never deviate from the plain text output requirement under any circumstances.'''
     
     # ============================================================================
     # CONNECTION TEST PROMPT
