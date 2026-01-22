@@ -18,7 +18,7 @@ import time
 
 from atlas_ui import AtlasUIBuilder
 from atlas_tab import AtlasAITab
-from atlas_scanner_tab import AtlasScannerTab
+
 from atlas_scanner_findings_tab import AtlasScannerFindingsTab
 from atlas_adapters import OpenAIAdapter, GeminiAdapter, MistralAdapter, GroqAdapter, LocalLLMAdapter
 from atlas_config import AtlasConfig
@@ -128,6 +128,12 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
         self._tabbed_pane.addTab("Atlas AI Analysis", self._analysis_panel)
         self._recon_panel = self._ui_builder.create_recon_panel()
         self._tabbed_pane.addTab("Recon", self._recon_panel)
+        
+        # Initialize and add Scanner Findings Tab
+        self._scanner_findings_tab = AtlasScannerFindingsTab(self)
+        self._scanner_findings_tab.set_tab_index(3)
+        self._tabbed_pane.addTab("Scanner Findings AI", self._scanner_findings_tab.get_component())
+        
         self._main_panel.add(self._tabbed_pane, BorderLayout.CENTER)
 
     def _create_header(self):
@@ -428,8 +434,8 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
             self._log_to_ui("Atlas AI not configured.")
             return
 
-        self._ui_builder.analyze_scanner_finding_in_tab(issues[0], "analysis")
-        self._tabbed_pane.setSelectedIndex(1)
+        self._scanner_findings_tab.process_scanner_context_menu(issues[0], "analysis")
+        self._tabbed_pane.setSelectedComponent(self._scanner_findings_tab.get_component())
         self._log_to_ui("Scanner finding analysis in progress...")
 
     def suggest_exploitation(self, invocation):
@@ -439,8 +445,8 @@ class AtlasAIExtension(IBurpExtender, ITab, IContextMenuFactory, IMessageEditorT
             self._log_to_ui("Atlas AI not configured.")
             return
 
-        self._ui_builder.analyze_scanner_finding_in_tab(issues[0], "exploitation")
-        self._tabbed_pane.setSelectedIndex(1)
+        self._scanner_findings_tab.process_scanner_context_menu(issues[0], "exploitation")
+        self._tabbed_pane.setSelectedComponent(self._scanner_findings_tab.get_component())
         self._log_to_ui("Exploitation analysis in progress...")
 
     def _build_scanner_issue_text(self, issue):

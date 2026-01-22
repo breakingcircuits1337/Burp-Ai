@@ -24,10 +24,10 @@ class ReconManager:
         def simulate_scan():
             try:
                 # Simulate running a few commands
-                self.extension.run_terminal_command("echo 'Scanning ports for {}...'.format(target)")
+                self.extension.run_terminal_command("echo 'Scanning ports for {}...'".format(target))
                 self.extension.run_terminal_command("nmap -F {}".format(target)) # Fast scan
                 
-                self.extension.run_terminal_command("echo 'Identifying web technologies for {}...'.format(target)")
+                self.extension.run_terminal_command("echo 'Identifying web technologies for {}...'".format(target))
                 self.extension.run_terminal_command("whatweb {}".format(target))
 
                 self._stdout.println("[Atlas AI] Reconnaissance complete for: " + target)
